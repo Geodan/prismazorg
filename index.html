@@ -1,0 +1,430 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Prisma map</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+    
+    <!-- JQUERY -->
+    <script src="http://ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js" type="text/javascript"></script>
+    
+    <!-- LEAFLET -->
+    <!--[if lte IE 8]>
+    <link rel="stylesheet" href="http://cdn.leafletjs.com/leaflet-0.6/leaflet.ie.css" />
+    <![endif]-->
+    <script src="http://cdn.leafletjs.com/leaflet-0.6/leaflet.js"></script>
+    <link rel="stylesheet" href="http://cdn.leafletjs.com/leaflet-0.6/leaflet.css" />
+    
+    <!-- D3 -->
+    <script src="http://d3js.org/d3.v3.min.js"></script>
+    <script src="http://d3js.org/topojson.v1.min.js"></script>
+    <script src="http://d3js.org/queue.v1.min.js"></script>
+    <script type="text/javascript" src="./libs/d3.csv.js"></script>
+    <script type="text/javascript" src="./libs/d3.geo.js"></script>
+    <script type="text/javascript" src="./libs/d3.geom.js"></script>
+    
+    <!-- CUSTOM--> 
+    <script type="text/javascript" src="./scripts/d3layer.js"></script>
+    <script type="text/javascript" src="./scripts/nodeoverlay.js"></script>
+    <style>
+        #map { position:absolute; top:0; bottom:0; width:100%;}
+        .leaflet-container {
+            background: white;
+        }
+        body {
+          margin:0; padding:0; 
+		  font:normal 14px/20px 'Source Sans Pro', 'Helvetica', sans-serif;
+		  color: white;
+        }
+        h1,h2 {color: white; margin: 2px;}
+     #map-ui {
+        background:rgba(0,0,0,.65);
+        width:420px;
+        z-index:9;
+        position:absolute;
+        top:20px;
+        left:10px;
+        padding:10px;
+    }
+    #legend-ui {
+        background:rgba(0,0,0,.0);
+        width:420px;
+        z-index:9;
+        position:absolute;
+        bottom:20px;
+        left:10px;
+        padding:10px;
+    }
+     .ctrls{display: block;}
+    .ctrl {
+        display:inline-block;
+        width:140px;
+        height:35px;
+        float:left;
+        font-weight: 400;
+        text-decoration:none;
+        color:#333;
+        border-left:1px solid #777;
+        border-top:1px solid #777;
+
+        text-align:center;
+        line-height:35px;
+        background:#555;
+        background:#cccccc;
+        margin:0;
+        box-sizing:border-box;
+    }
+
+    .ctrl:hover {
+        background:rgb(240,240,240);
+        color:#47c965;
+    }
+    .ctrl.selected {
+        background:rgb(240,240,240);
+    }
+    div.tooltip {   
+      position: absolute;           
+      text-align: center;           
+      width: auto;                  
+      height: auto;                 
+      padding: 2px;             
+      font: 12px sans-serif;
+      color: #666666;
+      background: lightsteelblue;   
+      border: 0px;      
+      border-radius: 8px;           
+      pointer-events: none;
+      z-index: 1000;
+    }
+    circle {
+        cursor: pointer;
+    }
+   
+    </style>
+    
+    <script type="text/javascript">
+    var d3layers = [];
+    var tmp;    
+    $(document).ready(function(){
+        var self = this;
+        /* Set the buttons */
+        var btnlocaties = document.getElementById('btnlocaties'),
+            btnmarktaandeel = document.getElementById('btnmarktaandeel'),
+            btnrelaties = document.getElementById('btnrelaties');
+        btnlocaties.addEventListener("touchstart", togglelocaties, false);
+        btnlocaties.addEventListener("click", togglelocaties, false);
+        btnmarktaandeel.addEventListener("touchstart", togglemarktaandeel, false);
+        btnmarktaandeel.addEventListener("click", togglemarktaandeel, false);
+        btnrelaties.addEventListener("touchstart", togglerelaties, false);
+        btnrelaties.addEventListener("click", togglerelaties, false);
+
+    
+        function togglelocaties(){
+            if (zorglocatielayer.data().features.length > 0){
+                $('#btnlocaties').removeClass('selected');
+                zorglocatielayer.data({features:[]});
+                }
+            else {
+                $('#btnlocaties').addClass('selected');
+                zorglocatielayer.data(self.zorglocaties);
+            }
+        }
+        function togglemarktaandeel(){
+            if (gemeentelyr.data().features.length > 0){
+                $('#btnmarktaandeel').removeClass('selected');
+                gemeentelyr.data({features:[]});
+                }
+            else {
+                $('#btnmarktaandeel').addClass('selected');
+                gemeentelyr.data(self.gemeenten);
+            }
+        }
+        function togglerelaties(){
+            if (zorgrelatielayer.nodes.length > 0){
+                $('#btnrelaties').removeClass('selected');
+                zorgrelatielayer.nodes = [];
+                zorgrelatielayer.links = [];
+                zorgrelatielayer.start();
+                }
+            else {
+                $('#btnrelaties').addClass('selected');
+                zorgrelatielayer.links = self.zorgrelaties.links;
+                zorgrelatielayer.nodes = self.zorgrelaties.nodes;
+                zorgrelatielayer.start();
+            }
+        }
+        
+        var handleNewExtent = function(data){
+            self._d3layers.forEach(function(l){
+                l.reset();
+            });
+		};
+		
+        var map = L.map('map',{ zoomControl:false});
+        this.map = map;
+        // add an OpenStreetMap tile layer
+        var osmlightUrl = 'http://{s}.tile2.opencyclemap.org/transport/{z}/{x}/{y}.png';
+        var layer = L.tileLayer(osmlightUrl, {
+            attribution: '&copy; <a href="http://osm.org/copyright">OpenStreetMap</a> contributors'
+        }).addTo(map);
+        layer.setOpacity(0.5);
+        map.setView([51.641921,4.912838], 10);
+        map.on('moveend',function(e){
+            d3layers.forEach(function(layer){
+             layer.reset();
+            });
+            var project = function(x){
+                var point = _this.map.latLngToLayerPoint(new L.LatLng(x[1], x[0])); //Leaflet version
+                return [point.x,point.y];
+            }
+            zorgrelatielayer.redraw(project);
+		});
+
+        /* Map */
+        var valueById = d3.map();
+            
+        var quantize = d3.scale.quantize()
+            .domain([0, 400])
+            .range(d3.range(9).map(function(i) { return "q" + i + "-9"; }));
+            
+        var svg = d3.select("#map");
+        
+        var addPieChart = function(d,i,ent,_this){
+            var radius = 20,
+            padding = 10;
+            
+            _this.color = d3.scale.ordinal()
+                .range(["#0000cc", "#0099ff", "#990000", "#ff6666"]);
+            
+            _this.arc = d3.svg.arc()
+                .outerRadius(radius )
+                .innerRadius(radius - padding);
+                
+            _this.pie = d3.layout.pie()
+                .sort(null)
+                .value(function(d) { 
+                    return d.value; 
+            });
+              var entity = d3.select(ent);
+              if (d.properties.values){
+                  var chart = entity.append('g')
+                    .classed('pie',true)
+                    .attr('width',150)
+                    .attr('height',150)
+                    .append('g')
+                    .attr('class','zoomable')
+                    .attr("transform", function(d){
+                        var x = _this.project(d.geometry.coordinates)[0];
+                        var y = _this.project(d.geometry.coordinates)[1];
+                        return "translate(" + x + "," + y + ")"
+                    });
+                 
+                 chart.selectAll('.arc')
+                    .data(function(d){
+                        return _this.pie(d.properties.values);
+                    })
+                    .enter().append("path")
+                    .attr("class", "arc")
+                    .attr("d", _this.arc)
+                    .style("fill", function(x) { 
+                            return _this.color(x.data.key); 
+                    });
+              }
+          }
+        var addBarChart = function(d,i,ent, _this){
+            _this.color = d3.scale.ordinal()
+                .range(["#98abc5", "#7b6888", "#a05d56", "#ff8c00"]);
+            var typenames = d3.keys({"Regulier":0,"Specifiek":10,"Prisma regulier":20,"Prisma specifiek":30});
+            _this.color.domain(typenames);
+            
+            var x = d3.scale.ordinal();
+                
+            var y = d3.scale.linear()
+                .range([0, -100]);//Negative range because rects will go down
+            var xAxis = d3.svg.axis()
+                .scale(0)
+                .orient("bottom");
+            
+            var yAxis = d3.svg.axis()
+                .scale(y)
+                .orient("left")
+                .tickFormat(d3.format(".2s"));
+            var typenames = ["regulier","specifiek","prismaregulier","prismaspecifiek"];
+            x.domain(typenames).rangeRoundBands([0,50]);
+            //x.domain([0,100]);
+            //y.domain([0, d3.max(_this.data, function(d) { return d3.max(d.values, function(d) { return d.value; }); })]);
+            y.domain([0,300]);
+
+
+          
+              var entity = d3.select(ent);
+              if (d.properties.values){
+                  var chart = entity.append('g')
+                    .classed('bar',true)
+                    .attr('width',50)
+                    .attr('height',50)
+                    .append('g')
+                    .attr('class','zoomable')
+                    .attr("transform", function(d){
+                        xloc = _this.geoPath.centroid(d)[0];
+                        yloc = _this.geoPath.centroid(d)[1];
+                        return "translate(" + xloc + "," + yloc + ")"
+                    });
+                 chart.selectAll('.stack')
+                    .data(function(d){
+                        return d.properties.values;
+                    })
+                    .enter().append('rect')
+                    .attr("class", function(d){return d.key;})
+                    .attr("width", function (d){
+                        if (d.key == 'regulier' || d.key == 'specifiek')
+                            return 10;
+                        else return 6;
+                    })
+                    .attr("x", function(d) { 
+                        if (d.key == 'regulier' || d.key == 'prismaregulier')
+                            return 0;
+                        else return 10;
+                        //return x(d.key);
+                    })
+                    .attr("y", function(d) { 
+                        return y(d.value); })//Move rect down with x
+                    .attr("height", function(d) { 
+                        return 0 - y(d.value);//100 is top of range in y-scale 
+                    })
+                    .style("fill", function(d) { 
+                        return _this.color(d.key);  
+                    });
+              }
+        }
+        
+        
+        var gemeentelyr = new d3layer("gemeentelayer",{
+            maptype: "Leaflet",
+            map: map,
+            type: "path",
+            eachFunctions: [addBarChart],
+            labels: false,
+            labelconfig: {
+                field:"owner",
+                style: {
+                    stroke: "#000033"
+                    }
+            },
+            classfield: 'value',
+            style: {
+                stroke: "grey",
+                'stroke-width': '0.5px',
+                fill: 'none'
+            }
+        });
+        d3layers.push(gemeentelyr);
+        var zorglocatielayer = new d3layer("zorglocatielayer",{
+            maptype: "Leaflet",
+            map: map,
+            type: "path",
+            eachFunctions: [addPieChart],
+            mouseoverContent: "mouseoverhtml",
+            labels: false,
+            labelconfig: {
+                field: "omschr"
+            },
+            classfield: "type"
+        });
+        d3layers.push(zorglocatielayer);
+        
+        
+        
+        //Relaties on map
+        var width = 800,
+            height = 800;
+        var svg = d3.select("#map").select("svg");
+        var zorgrelatielayer = new nodeOverlay(svg,width,height);
+        
+        //Getting the data
+        queue()
+            .defer(d3.json, './data/gemeenten.json')
+            .defer(d3.tsv, './data/cizdata.csv', function(d){
+                    valueById.set(d.id, [
+                        {key: 'regulier', value: +d.reg},
+                        {key:'specifiek', value: +d.spec},
+                        {key: 'prismaregulier', value: +d.prismareg},
+                        {key: 'prismaspecifiek', value: +d.prismaspec}
+                     ]);
+             })
+            .await(ready);
+         function ready(error, gemeenten){
+            self.gemeenten = gemeenten;
+            gemeenten.features.forEach(function(d,i){
+                if (valueById.get(d.id)){
+                    d.properties.color = quantize(valueById.get(d.id)[0]);
+                    d.properties.values = valueById.get(d.id);
+                }
+            });
+            gemeentelyr.data({features:[]});
+        }
+        
+        d3.json('./data/zorglocaties.json',function(data){
+            data.features.forEach(function(d){
+                d.minzoomlevel = 10;
+                d.mouseoverhtml = "<b>" + d.properties.locatie_omschr + "</b>"
+                    + "<br>Type " + d.properties.type
+                    + "<hr><br>Bezetting regulier: " + d.properties.bezetting_regulier
+                    + "<br>Bezetting specifiek: " + d.properties.bezetting_specifiek
+                 ;
+                d.properties.values = [
+                    {key: 'regulier_beschikbaar', value: d.properties.bezetting_regulier * 0.3},
+                    {key: 'specifiek_beschikbaar', value: d.properties.bezetting_specifiek * 0.2},
+                    {key: 'regulier_bezet', value: d.properties.bezetting_regulier},
+                    {key: 'specifiek_bezet', value: d.properties.bezetting_specifiek}
+                 ]
+                var style = {};
+                if (d.properties.type == 'REGULIER')
+                    style.fill = "#009900";
+                if (d.properties.type == 'SPECIFIEK')
+                    style.fill = "#0066ff";
+                if (d.properties.type == 'SPECIAAL')
+                    style.fill = "#cc0000";
+                if (d.properties.type == 'D&A')
+                    style.fill = "#ffcc00";
+                d.style = style;
+            })
+            self.zorglocaties = data;
+            
+            zorglocatielayer.data({features:[]});
+        });
+        
+        d3.json('./data/zorgrelaties2.json',function(data){
+           self.zorgrelaties = data;
+           
+           data.nodes.forEach(function(d){
+               d.x = self.map.latLngToLayerPoint(new L.LatLng(d.ycoord, d.xcoord)).x;
+               d.y = self.map.latLngToLayerPoint(new L.LatLng(d.ycoord, d.xcoord)).y;
+               d.fixed = true;
+           });
+           //zorgrelatielayer.nodes = data.nodes;
+           //zorgrelatielayer.links = data.links;
+           zorgrelatielayer.nodes = [];
+           zorgrelatielayer.links = [];
+           
+           zorgrelatielayer.start();
+        });
+
+        
+    });
+    </script>
+
+</head>
+<body >
+    <div id='map-ui'>
+			<h1>Prisma zorg in kaart</h1>
+			<h2>door Geodan</h2>
+			<div class='ctrls'>
+				<a class='ctrl' href='#locaties' id='btnlocaties'>Locaties</a>
+				<a class='ctrl' href='#' id='btnmarktaandeel'>Marktaandeel</a>
+				<a class='ctrl' href='#' id='btnrelaties'>Relaties</a>
+			</div>
+		</div>
+	<div id="legend-ui"></div>
+    <div id="map"></div>
+</body>
+</html>

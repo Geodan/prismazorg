@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<head>
+<title>CIZ stats</title>
+</head>
+<meta charset="utf-8"></meta>
+<style>
+.q0-9 { fill:rgb(247,251,255); }
+.q1-9 { fill:rgb(222,235,247); }
+.q2-9 { fill:rgb(198,219,239); }
+.q3-9 { fill:rgb(158,202,225); }
+.q4-9 { fill:rgb(107,174,214); }
+.q5-9 { fill:rgb(66,146,198); }
+.q6-9 { fill:rgb(33,113,181); }
+.q7-9 { fill:rgb(8,81,156); }
+.q8-9 { fill:rgb(8,48,107); }
+
+</style>
+<body>
+<script src="http://d3js.org/d3.v3.min.js"></script>
+<script src="http://d3js.org/topojson.v1.min.js"></script>
+<script src="http://d3js.org/queue.v1.min.js"></script>
+<script type="text/javascript" src="./libs/d3.csv.js"></script>
+<script type="text/javascript" src="./libs/d3.geo.js"></script>
+<script type="text/javascript" src="./libs/d3.geom.js"></script>
+<script type="text/javascript" src="./scripts/d3layer.js"></script>
+<script>
+
+var width = 1060,
+    height = 900;
+
+var valueById = d3.map();
+    
+var quantize = d3.scale.quantize()
+    .domain([0, 400])
+    .range(d3.range(9).map(function(i) { return "q" + i + "-9"; }));
+
+var svg = d3.select("body").append("svg")
+    .attr("width", width)
+    .attr("height", height)
+    .attr("id",'map');
+
+var map = d3.select("#map");
+
+
+/* Map */
+var gemeentelyr = new d3layer("gemeentelayer",{
+        maptype: "D3",
+        map: map,
+        type: "path",
+        charts: true,
+        labels: false,
+        labelconfig: {
+            field:"owner",
+            style: {
+                stroke: "#000033"
+                }
+        },
+        classfield: 'value',
+        style: {
+            stroke: "grey",
+            'stroke-width': '0.5px',
+            fill: 'none'
+        }
+ });
+
+
+ 
+queue()
+    .defer(d3.json, './data/gemeenten.json')
+    .defer(d3.tsv, './data/cizdata.csv', function(d){
+            valueById.set(d.id, +d.value);
+     })
+    .await(ready);
+    
+function ready(error, gemeenten){
+
+    gemeenten.features.forEach(function(d){
+        d.properties.color = quantize(valueById.get(d.id));
+        d.properties.value = valueById.get(d.id);
+    });
+    gemeentelyr.data(gemeenten);
+}
+
+</script>
+</body>
+</html>
+
