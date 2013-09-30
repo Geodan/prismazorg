@@ -49,7 +49,7 @@
         padding:10px;
     }
     #legend-ui {
-        background: rgba(0,0,0,.0);
+        background: rgba(0,0,0,.6);
         width:220px;
         z-index:9;
         position:absolute;
@@ -168,12 +168,14 @@
                 $(this).addClass('selected');
             }
             else {
+                clearrelaties();
                 $('.ctrls.relaties').addClass('hidden');
                 $(this).removeClass('selected');
             }
         }
         
         function toggledagbesteding(){
+            
             if (dagbestedinglayer.nodes.length > 0){
                 $(this).removeClass('selected');
                 dagbestedinglayer.nodes = [];
@@ -181,6 +183,7 @@
                 dagbestedinglayer.start();
             }
             else {
+                clearrelaties();
                 $(this).addClass('selected');
                 dagbestedinglayer.links = self.dagbestedingdata.links;
                 dagbestedinglayer.nodes = self.dagbestedingdata.nodes;
@@ -189,6 +192,7 @@
         }
         
         function toggleambulant(){
+            
             if (ambulantlayer.nodes.length > 0){
                 $(this).removeClass('selected');
                 ambulantlayer.nodes = [];
@@ -196,6 +200,7 @@
                 ambulantlayer.start();
             }
             else {
+                clearrelaties();
                 $(this).addClass('selected');
                 ambulantlayer.links = self.ambulantdata.links;
                 ambulantlayer.nodes = self.ambulantdata.nodes;
@@ -203,6 +208,7 @@
             }
         }
         function toggleverblijf(){
+            
             if (behandellayer.nodes.length > 0){
                 $(this).removeClass('selected');
                 behandellayer.nodes = [];
@@ -210,11 +216,27 @@
                 behandellayer.start();
             }
             else {
+                clearrelaties();
                 $(this).addClass('selected');
                 behandellayer.links = self.behandeldata.links;
                 behandellayer.nodes = self.behandeldata.nodes;
                 behandellayer.start();
             }
+        }
+        function clearrelaties(){
+                $('#btnlinks').removeClass('selected');
+                $('#btndagbesteding').removeClass('selected');
+                $('#btnverblijf').removeClass('selected');
+                $('#btnambulant').removeClass('selected');
+                behandellayer.nodes = [];
+                behandellayer.links = [];
+                behandellayer.start();
+                ambulantlayer.nodes = [];
+                ambulantlayer.links = [];
+                ambulantlayer.start();
+                dagbestedinglayer.nodes = [];
+                dagbestedinglayer.links = [];
+                dagbestedinglayer.start();
         }
         
         function togglelinks(){
@@ -273,7 +295,11 @@
             padding = 10;
             
             _this.color = d3.scale.ordinal()
-                .range(["#0000cc", "#0099ff", "#990000", "#ff6666"]);
+                .range(["#00ccff", 
+                    "#0000cc", 
+                    "#ff9933",
+                    "#990000"
+                   ]);
             
             _this.arc = d3.svg.arc()
                 .outerRadius(radius )
@@ -429,7 +455,7 @@
             .defer(d3.tsv, './data/cizdata.csv', function(d){
                     valueById.set(d.id, [
                         {key: 'regulier', value: +d.reg},
-                        {key:'specifiek', value: +d.spec},
+                        {key: 'specifiek', value: +d.spec},
                         {key: 'prismaregulier', value: +d.prismareg},
                         {key: 'prismaspecifiek', value: +d.prismaspec}
                      ]);
@@ -459,15 +485,22 @@
         d3.json('./data/zorglocaties.json',function(data){
             data.features.forEach(function(d){
                 d.minzoomlevel = 11;
+                var rand1 = Math.random(); //Some magical numbers because we lack data..
+                var rand2 = Math.random();
                 d.mouseoverhtml = "<b>" + d.properties.locatie_omschr + "</b>"
                     + "<br>Type " + d.properties.type
-                    + "<hr><br>Bezetting regulier: " + d.properties.bezetting_regulier
-                    + "<br>Bezetting specifiek: " + d.properties.bezetting_specifiek
+                    + "<br><table><tr><th colspan=2>Regulier</th></tr>"
+                    + "<tr><td>Bezet: " + d.properties.bezetting_regulier
+                    + "</td><td>Vrij: " + Math.round(d.properties.bezetting_regulier * rand1,0)
+                    + "</tr><tr><th colspan=2>Specifiek</th></tr>"
+                    + "<tr><td>Bezet: " + d.properties.bezetting_specifiek
+                    + "</td><td>Vrij: " + Math.round(d.properties.bezetting_specifiek * rand2,0)
+                    + "</td></tr></table>";
                  ;
                 d.properties.values = [
-                    {key: 'regulier_beschikbaar', value: d.properties.bezetting_regulier * 0.3},
-                    {key: 'specifiek_beschikbaar', value: d.properties.bezetting_specifiek * 0.2},
+                    {key: 'regulier_beschikbaar', value: d.properties.bezetting_regulier * rand1},
                     {key: 'regulier_bezet', value: d.properties.bezetting_regulier},
+                    {key: 'specifiek_beschikbaar', value: d.properties.bezetting_specifiek * rand2},
                     {key: 'specifiek_bezet', value: d.properties.bezetting_specifiek}
                  ]
                 var style = {};
@@ -545,7 +578,13 @@
            dagbestedinglayer.links = [];
            dagbestedinglayer.start();
         });
-
+        var legend = function(){
+            var svg = d3.select('#btnlocaties').append('svg').attr('width',300).attr('height',400);
+            var line1 = svg.append('g');
+            line1.insert('circle').attr('r',10).attr('cx',10).attr('cy',10).style('fill','steelBlue');
+            line1.insert('text').attr('x',30).attr('y',10).text("b;ab;a").style('color','white');
+        }
+        //legend();//TODO
         
     });
     </script>
