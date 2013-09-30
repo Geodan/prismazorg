@@ -14,6 +14,8 @@
     <script src="http://cdn.leafletjs.com/leaflet-0.6/leaflet.js"></script>
     <link rel="stylesheet" href="http://cdn.leafletjs.com/leaflet-0.6/leaflet.css" />
     
+    <script type="text/javascript" src="http://maps.stamen.com/js/tile.stamen.js?v1.2.3"></script>
+    
     <!-- D3 -->
     <script src="http://d3js.org/d3.v3.min.js"></script>
     <script src="http://d3js.org/topojson.v1.min.js"></script>
@@ -37,8 +39,9 @@
         }
         h1,h2 {color: white; margin: 2px;}
      #map-ui {
-        background:rgba(0,0,0,.65);
-        width:420px;
+        background: rgba(0,0,0,.65);
+        opacity: 0.65;
+        width:220px;
         z-index:9;
         position:absolute;
         top:20px;
@@ -46,8 +49,8 @@
         padding:10px;
     }
     #legend-ui {
-        background:rgba(0,0,0,.0);
-        width:420px;
+        background: rgba(0,0,0,.0);
+        width:220px;
         z-index:9;
         position:absolute;
         bottom:20px;
@@ -59,21 +62,21 @@
         display:inline-block;
         width:140px;
         height:35px;
-        float:left;
+        /*float:left;*/
         font-weight: 400;
         text-decoration:none;
         color:#333;
         border-left:1px solid #777;
         border-top:1px solid #777;
-
         text-align:center;
         line-height:35px;
-        background:#555;
         background:#cccccc;
         margin:0;
         box-sizing:border-box;
     }
-
+    .hidden {
+        display: none;
+    }
     .ctrl:hover {
         background:rgb(240,240,240);
         color:#47c965;
@@ -81,14 +84,22 @@
     .ctrl.selected {
         background:rgb(240,240,240);
     }
+    
+    .ctrls.lev2 {
+        margin-left: 40px;
+    }
+    .ctrls.lev3 {
+        margin-left: 60px;
+    }
+    
     div.tooltip {   
       position: absolute;           
-      text-align: center;           
+      text-align: left;           
       width: auto;                  
       height: auto;                 
-      padding: 2px;             
-      font: 12px sans-serif;
-      color: #666666;
+      padding: 5px;             
+      font: 16px sans-serif;
+      color: #000099;
       background: lightsteelblue;   
       border: 0px;      
       border-radius: 8px;           
@@ -109,47 +120,111 @@
         /* Set the buttons */
         var btnlocaties = document.getElementById('btnlocaties'),
             btnmarktaandeel = document.getElementById('btnmarktaandeel'),
-            btnrelaties = document.getElementById('btnrelaties');
+            btnrelaties = document.getElementById('btnrelaties'),
+            btndagbesteding= document.getElementById('btndagbesteding'),
+            btnverblijf    = document.getElementById('btnverblijf'),
+            btnambulant    = document.getElementById('btnambulant'),
+            btnlinks    = document.getElementById('btnlinks');
         btnlocaties.addEventListener("touchstart", togglelocaties, false);
         btnlocaties.addEventListener("click", togglelocaties, false);
         btnmarktaandeel.addEventListener("touchstart", togglemarktaandeel, false);
         btnmarktaandeel.addEventListener("click", togglemarktaandeel, false);
         btnrelaties.addEventListener("touchstart", togglerelaties, false);
         btnrelaties.addEventListener("click", togglerelaties, false);
-
-    
+        btndagbesteding.addEventListener("click",toggledagbesteding,false);
+        btnverblijf    .addEventListener("click",toggleverblijf    ,false);
+        btnambulant    .addEventListener("click",toggleambulant    ,false);
+        btndagbesteding.addEventListener("touchstart",toggledagbesteding,false);
+        btnverblijf    .addEventListener("touchstart",toggleverblijf    ,false);
+        btnambulant    .addEventListener("touchstart",toggleambulant    ,false);
+        btnlinks    .addEventListener("click",togglelinks    ,false);
+        btnlinks    .addEventListener("touchstart",togglelinks    ,false);
+        
+        
         function togglelocaties(){
             if (zorglocatielayer.data().features.length > 0){
-                $('#btnlocaties').removeClass('selected');
+                $(this).removeClass('selected');
                 zorglocatielayer.data({features:[]});
                 }
             else {
-                $('#btnlocaties').addClass('selected');
+                $(this).addClass('selected');
                 zorglocatielayer.data(self.zorglocaties);
             }
         }
         function togglemarktaandeel(){
             if (gemeentelyr.data().features.length > 0){
-                $('#btnmarktaandeel').removeClass('selected');
+                $(this).removeClass('selected');
                 gemeentelyr.data({features:[]});
                 }
             else {
-                $('#btnmarktaandeel').addClass('selected');
+                $(this).addClass('selected');
                 gemeentelyr.data(self.gemeenten);
             }
         }
+        
         function togglerelaties(){
-            if (zorgrelatielayer.nodes.length > 0){
-                $('#btnrelaties').removeClass('selected');
-                zorgrelatielayer.nodes = [];
-                zorgrelatielayer.links = [];
-                zorgrelatielayer.start();
-                }
+            if ($('.ctrls.relaties').hasClass('hidden')){
+                $('.ctrls.relaties').removeClass('hidden');
+                $(this).addClass('selected');
+            }
             else {
-                $('#btnrelaties').addClass('selected');
-                zorgrelatielayer.links = self.zorgrelaties.links;
-                zorgrelatielayer.nodes = self.zorgrelaties.nodes;
-                zorgrelatielayer.start();
+                $('.ctrls.relaties').addClass('hidden');
+                $(this).removeClass('selected');
+            }
+        }
+        
+        function toggledagbesteding(){
+            if (dagbestedinglayer.nodes.length > 0){
+                $(this).removeClass('selected');
+                dagbestedinglayer.nodes = [];
+                dagbestedinglayer.links = [];
+                dagbestedinglayer.start();
+            }
+            else {
+                $(this).addClass('selected');
+                dagbestedinglayer.links = self.dagbestedingdata.links;
+                dagbestedinglayer.nodes = self.dagbestedingdata.nodes;
+                dagbestedinglayer.start();
+            }
+        }
+        
+        function toggleambulant(){
+            if (ambulantlayer.nodes.length > 0){
+                $(this).removeClass('selected');
+                ambulantlayer.nodes = [];
+                ambulantlayer.links = [];
+                ambulantlayer.start();
+            }
+            else {
+                $(this).addClass('selected');
+                ambulantlayer.links = self.ambulantdata.links;
+                ambulantlayer.nodes = self.ambulantdata.nodes;
+                ambulantlayer.start();
+            }
+        }
+        function toggleverblijf(){
+            if (behandellayer.nodes.length > 0){
+                $(this).removeClass('selected');
+                behandellayer.nodes = [];
+                behandellayer.links = [];
+                behandellayer.start();
+            }
+            else {
+                $(this).addClass('selected');
+                behandellayer.links = self.behandeldata.links;
+                behandellayer.nodes = self.behandeldata.nodes;
+                behandellayer.start();
+            }
+        }
+        
+        function togglelinks(){
+            if ($(this).hasClass('selected')){
+                $(this).removeClass('selected');
+                d3.selectAll('line').style('stroke', '990099').style('opacity',0);
+            }
+            else {
+                $(this).addClass('selected');
+                d3.selectAll('line').style('stroke', '990099').style('opacity',0.2);
             }
         }
         
@@ -158,25 +233,30 @@
                 l.reset();
             });
 		};
-		
-        var map = L.map('map',{ zoomControl:false});
+
+        var tonerlayer = new L.StamenTileLayer("toner");
+        var osmlightUrl = 'http://{s}.tile2.opencyclemap.org/transport/{z}/{x}/{y}.png';
+        var osmlayer = L.tileLayer(osmlightUrl, {
+            attribution: '&copy; <a href="http://osm.org/copyright">OpenStreetMap</a> contributors'
+        });		
+        var map = L.map('map',{ 
+            zoomControl:false,
+            layers: [osmlayer]
+        });
         this.map = map;
         // add an OpenStreetMap tile layer
-        var osmlightUrl = 'http://{s}.tile2.opencyclemap.org/transport/{z}/{x}/{y}.png';
-        var layer = L.tileLayer(osmlightUrl, {
-            attribution: '&copy; <a href="http://osm.org/copyright">OpenStreetMap</a> contributors'
-        }).addTo(map);
-        layer.setOpacity(0.5);
+        
+        //map.addLayer(osmlayer);
+        //map.addLayer(tonerlayer);
+        osmlayer.setOpacity(0.5);
         map.setView([51.641921,4.912838], 10);
         map.on('moveend',function(e){
             d3layers.forEach(function(layer){
              layer.reset();
             });
-            var project = function(x){
-                var point = _this.map.latLngToLayerPoint(new L.LatLng(x[1], x[0])); //Leaflet version
-                return [point.x,point.y];
-            }
-            zorgrelatielayer.redraw(project);
+            behandellayer.redraw(map);
+            ambulantlayer.redraw(map);
+            dagbestedinglayer.redraw(map);
 		});
 
         /* Map */
@@ -304,6 +384,7 @@
             type: "path",
             eachFunctions: [addBarChart],
             labels: false,
+            mouseoverContent: "mouseoverhtml",
             labelconfig: {
                 field:"owner",
                 style: {
@@ -312,9 +393,11 @@
             },
             classfield: 'value',
             style: {
-                stroke: "grey",
-                'stroke-width': '0.5px',
-                fill: 'none'
+                stroke: "steelBlue",
+                'stroke-width': '2px',
+                fill: 'white',
+                'stroke-opacity': 0.5,
+                'fill-opacity': 0.2
             }
         });
         d3layers.push(gemeentelyr);
@@ -332,15 +415,15 @@
         });
         d3layers.push(zorglocatielayer);
         
-        
-        
         //Relaties on map
         var width = 800,
             height = 800;
         var svg = d3.select("#map").select("svg");
-        var zorgrelatielayer = new nodeOverlay(svg,width,height);
+        var ambulantlayer = new nodeOverlay(svg,width,height);
+        var behandellayer = new nodeOverlay(svg,width,height);
+        var dagbestedinglayer = new nodeOverlay(svg,width,height);
         
-        //Getting the data
+        //LOADING gemeenteinfo (marktaandeel)
         queue()
             .defer(d3.json, './data/gemeenten.json')
             .defer(d3.tsv, './data/cizdata.csv', function(d){
@@ -355,17 +438,27 @@
          function ready(error, gemeenten){
             self.gemeenten = gemeenten;
             gemeenten.features.forEach(function(d,i){
+                var style = {};
+                if (valueById.get(d.id))
+                    style.fill = '#9999ff';
+                d.style = style;
+                html = "<b>" + d.properties.gemnaam + "</b><br>";
                 if (valueById.get(d.id)){
                     d.properties.color = quantize(valueById.get(d.id)[0]);
                     d.properties.values = valueById.get(d.id);
+                    d.properties.values.forEach(function(d){
+                        html = html + d.key + ": " + d.value + "<br>";
+                    });
                 }
+                d.mouseoverhtml = html;
+                     
             });
             gemeentelyr.data({features:[]});
         }
-        
+        //LOADING zorglocaties
         d3.json('./data/zorglocaties.json',function(data){
             data.features.forEach(function(d){
-                d.minzoomlevel = 10;
+                d.minzoomlevel = 11;
                 d.mouseoverhtml = "<b>" + d.properties.locatie_omschr + "</b>"
                     + "<br>Type " + d.properties.type
                     + "<hr><br>Bezetting regulier: " + d.properties.bezetting_regulier
@@ -393,20 +486,64 @@
             zorglocatielayer.data({features:[]});
         });
         
-        d3.json('./data/zorgrelaties2.json',function(data){
-           self.zorgrelaties = data;
-           
+        //LOADING relaties
+        d3.json('./data/relatie_ambulant.json',function(data){
+           self.ambulantdata = data;
            data.nodes.forEach(function(d){
+               d.html = d.naam + " " + d.rol;
                d.x = self.map.latLngToLayerPoint(new L.LatLng(d.ycoord, d.xcoord)).x;
                d.y = self.map.latLngToLayerPoint(new L.LatLng(d.ycoord, d.xcoord)).y;
                d.fixed = true;
            });
-           //zorgrelatielayer.nodes = data.nodes;
-           //zorgrelatielayer.links = data.links;
-           zorgrelatielayer.nodes = [];
-           zorgrelatielayer.links = [];
-           
-           zorgrelatielayer.start();
+           ambulantlayer.nodes = [];
+           ambulantlayer.links = [];
+           ambulantlayer.start();
+        });
+        d3.json('./data/mdw_locatie.json',function(data){
+           self.behandeldata = data;
+           data.nodes.forEach(function(d){
+                var style = {};
+                if (d.rol == 'REGULIER')
+                    style.fill = "#009900";
+                else if (d.rol == 'SPECIFIEK')
+                    style.fill = "#0066ff";
+                else if (d.rol == 'SPECIAAL')
+                    style.fill = "#cc0000";
+                else if (d.rol == 'D&A')
+                    style.fill = "#ffcc00";
+                else 
+                    style.opacity = 0.5;
+                d.style = style;
+                
+               d.html = d.naam + " " + d.rol;
+               d.x = self.map.latLngToLayerPoint(new L.LatLng(d.ycoord, d.xcoord)).x;
+               d.y = self.map.latLngToLayerPoint(new L.LatLng(d.ycoord, d.xcoord)).y;
+               d.fixed = true;
+           });
+           behandellayer.nodes = [];
+           behandellayer.links = [];
+           behandellayer.start();
+        });
+        d3.json('./data/relatie_dagbesteding.json',function(data){
+           self.dagbestedingdata = data;
+           data.nodes.forEach(function(d){
+                var style = {};
+                if (d.groep == 'loc') {
+                    style.fill =  "orange";
+                    style.opacity = 0.7;
+                }
+                else style.fill = "steelBlue";
+                d.style = style;
+               
+               d.html = d.naam + " " + d.rol;
+               
+               d.x = self.map.latLngToLayerPoint(new L.LatLng(d.ycoord, d.xcoord)).x;
+               d.y = self.map.latLngToLayerPoint(new L.LatLng(d.ycoord, d.xcoord)).y;
+               d.fixed = true;
+           });
+           dagbestedinglayer.nodes = [];
+           dagbestedinglayer.links = [];
+           dagbestedinglayer.start();
         });
 
         
@@ -416,15 +553,25 @@
 </head>
 <body >
     <div id='map-ui'>
-			<h1>Prisma zorg in kaart</h1>
-			<h2>door Geodan</h2>
-			<div class='ctrls'>
-				<a class='ctrl' href='#locaties' id='btnlocaties'>Locaties</a>
-				<a class='ctrl' href='#' id='btnmarktaandeel'>Marktaandeel</a>
-				<a class='ctrl' href='#' id='btnrelaties'>Relaties</a>
+			<h1>Prisma </h1> <h2>zorg in kaart</h2>
+			<h3>door Geodan</h3>
+			<div class='ctrls lev1'>
+				<a class='ctrl' href='#' id='btnlocaties'>Locaties</a><br>
+				<a class='ctrl' href='#' id='btnmarktaandeel'>Marktaandeel</a><br>
+				<a class='ctrl' href='#' id='btnrelaties'>Relaties</a><br>
+				<div class='ctrls lev2 hidden relaties'>
+			        <a class='ctrl' href='#' id='btndagbesteding'>Dagbesteding</a><br>
+			        <a class='ctrl' href='#' id='btnverblijf'>Verblijf</a><br>
+			        <a class='ctrl' href='#' id='btnambulant'>Ambulant</a><br>
+				</div>
+			</div>
+			
+			<div class='ctrls lev3 hidden relaties'>
+			    <a class='ctrl' href='#' id='btnlinks'>Lijnen</a>
 			</div>
 		</div>
 	<div id="legend-ui"></div>
+	<div id="sider"></div>
     <div id="map"></div>
 </body>
 </html>

@@ -10,9 +10,45 @@ function nodeOverlay(svg,w,h) {
     var svg = svg;
     var _this = this;
     
+    //Adding a tooltip div
+    var div = d3.select("body").append("div")   
+        .attr("class", "tooltip")               
+        .style("opacity", 0);
+    
+    //A per feature styling method
+    this.styling = function(d){ 
+        for (var key in _this.style) { //First check for generic layer style
+            d3.select(this)
+            .style(key,function(d){
+                if (d.style && d.style[key])
+                    return d.style[key]; //Override with features style if present
+                else	
+                    return _this.style[key]; //Apply generic style
+            });
+        };
+        //Now apply remaining styles of feature (possible doing a bit double work from previous loop)
+        if (d.style) { //If feature has style information
+            for (var key in d.style){ //run through the styles
+                d3.select(this).style(key,d.style[key]); //and apply them
+            }
+        }
+    };     
+        
+        
     // Toggle children on click.
     var click = function(d) {
-      start();
+        if (d.active){
+            d.active = false;
+            d3.select(this).attr('r',5);
+            d3.selectAll('.link'+d.id).style('stroke','none');
+        }
+        else{
+            d.active = true;
+            d3.select(this).attr('r',10);
+            var color = 'steelBlue'
+            if (d.groep == 'mdw') color = 'orange';
+            d3.selectAll('.link'+d.id).style('stroke',color);
+        }
     }
     
     
@@ -59,39 +95,62 @@ function nodeOverlay(svg,w,h) {
         .links(this.links)
         .start();
       
-      link = link.data(force.links());
+
+    link = link.data(force.links());
       var linkenter = link.enter().append("line")
 //        .classed("link", true)
         .attr("id",function(d) { return d.source.id + "-" + d.target.id;})
         .attr("class",function(d) { return "link"+ d.source.id + " link" + d.target.id;})
         .style('stroke','none')
-        .style('stroke-width','2px');
+        .style('stroke-width','2px')
+        .style('opacity',0.7);
       link.exit().remove();
-    
+      
       node = node.data(force.nodes());
       
       var nodeEnter = node.enter().append("g")
             .attr("class", "node")
             //.each(function(d){console.log("node enter: " + d.id)});
-            
+      function onmouseover(d){
+        var color = 'steelBlue';
+        if (d.groep == 'mdw') color = 'orange';
+        d3.selectAll('.link'+d.id)
+            .style('stroke',color).style("opacity", 1)
+
+        if (d.html){
+            div.transition()        
+                .duration(200)      
+                .style("opacity", .9);      
+            div .html(d.html + "<br/>")  
+                .style("left", (d3.event.pageX) + "px")     
+                .style("top", (d3.event.pageY - 28) + "px");
+        }
+      }
+      function onmouseout(d){
+        if (!d.active){
+            d3.selectAll('.link'+d.id)
+                .style('stroke','none');
+        }
+        div.transition()        
+            .duration(500)      
+            .style("opacity", 0); 
+	  }
       nodeEnter.append("circle")
-        .classed("circle",true)
+        .attr("class",function(d){return d.product})
         .attr("id",function(d) { return d.id;})
-        .attr("r", 5)
+        .attr("r", function(d){
+                if (d.groep == 'mdw') return 5
+                else if (d.groep == 'clnt') return 5
+                else return 10
+        })
         .attr("fill",function(d){
                 if (d.groep == 'mdw') return "orange"
                 else return "steelBlue"
         })
+        .each(_this.styling)
         .on("click", click)
-        .on("mouseover", function(d, i) {
-                var color = 'steelBlue'
-                if (d.groep == 'mdw') color = 'yellow';
-                    
-                d3.selectAll('.link'+d.id).style('stroke',color);
-        })
-        .on("mouseout", function(d, i) { 
-                d3.selectAll('.link'+d.id).style('stroke','none');
-        })
+        .on("mouseover", onmouseover)
+        .on("mouseout", onmouseout)
         .call(force.drag);
         
       //nodeEnter.append("text")
@@ -103,21 +162,29 @@ function nodeOverlay(svg,w,h) {
       
       node.selectAll('text').text(function(d){return d.name;});
       node.exit().remove();
+      
+      
       force.start();
       d3.timer(force.resume);
     }
     this.start = start;
   
-    var redraw = function(project){
+    var redraw = function(map){
+        var project = function(x){
+            var point = map.latLngToLayerPoint(new L.LatLng(x[1], x[0])); //Leaflet version
+            return [point.x,point.y];
+        }
         //force.nodes(treenodes);
         //force.links(treelinks);
-        force.nodes(nodes);
-        force.links(links);
+        force.nodes(this.nodes);
+        force.links(this.links);
         node = node.data(force.nodes(), function(d) { return d.id;});
         node.each(function(d){
-            if (d.coords){
-              d.px = project(d.coords)[0];
-              d.py = project(d.coords)[1];
+            
+            if (d.xcoord){
+              coords = [d.xcoord, d.ycoord];
+              d.px = project(coords)[0];
+              d.py = project(coords)[1];
             }
             else {
                //d.px = d.px + _this.moved[0];
@@ -128,79 +195,6 @@ function nodeOverlay(svg,w,h) {
         //d3.timer(force.resume);
     }
     this.redraw = redraw;
-    
-    var addLink = function(data){
-        nodes.forEach(function(node){
-            if (node.id == data.nucleus){
-                links.push({source: node, target: data});
-            }
-        });
-    }
-    
-    var addNode = function(data){
-        var isnew = true; 
-        nodes.forEach(function(node){
-            if (node.id == data.id){
-                isnew = false;
-                //Check if nucleus has changed
-                if (node.nucleus != data.nucleus){
-                    node.nucleus = data.nucleus;
-                    links.forEach(function(link,i){
-                        if (link.target.id == data.id) links.splice(i,1);
-                    });
-                    addLink(node);
-                }
-                node.name = data.name;
-            }
-        });
-        if (isnew && data.type == 'nucleus'){
-            nodes.push(data);
-        }
-        if (isnew && data.type == 'satellite'){
-            nodes.push(data);
-            addLink(data);
-        }
-    }
-    this.addNode = addNode;
-    
-    var clearNodes = function(){
-        nodes = [];
-        links = [];
-    }
-    this.clearNodes = clearNodes;
-    
-    var removeNode = function(data){
-        nodes.forEach(function(node,i){
-            if (node.id == data.id) nodes.splice(i,1);
-        });
-        
-    }
-    this.removeNode = removeNode;
-    
-    var updateNode = function(uid){
-        /*
-        var node = d3.select('circle#peer' + uid);
-        if (node.length > 0){
-            node.style('fill','red')
-            .transition().duration(1000)
-            .style('fill','#dddddd')
-            ;
-        }*/
-    }
-    this.updateNode = updateNode;
-    
-    var updateLink = function(uid){
-        var line = d3.select('line#satellite' + uid);
-        if (line.length > 0){
-            line.style('stroke','red')
-            .style('stroke-width',3)
-            .transition().duration(1000)
-            .style('stroke','#dddddd')
-            .style('stroke-width',1);
-        }
-    }
-    this.updateLink = updateLink;
-    
     
 }
 

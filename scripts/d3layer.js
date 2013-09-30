@@ -1,5 +1,5 @@
 var tmp;
-function d3layer(layername, config){
+var d3layer = function(layername, config){
 		var f = {}, bounds, feature, collection;
 		this.f = f;
 		var _this = this;        
@@ -11,7 +11,7 @@ function d3layer(layername, config){
 		this.g = config.g;
 		this.map = config.map;
 		this.style = config.style;
-		this.minzoomlevel = config.minzoomlevel || 0;
+		this.minzoomlevel = config.minzoomlevel || 1;
 		this.mouseoverContent = config.mouseoverContent;
 		this.classfield = config.classfield;
 		this.satellites = config.satellites || false;
@@ -29,6 +29,8 @@ function d3layer(layername, config){
         var div = d3.select("body").append("div")   
             .attr("class", "tooltip")               
             .style("opacity", 0);
+        
+        var legend = d3.select("#legend").append("div");
 		
 		if (config.maptype == 'OpenLayers'){//Getting the correct OpenLayers SVG. 
 			var div = d3.selectAll("#" + config.divid);
@@ -327,11 +329,11 @@ function d3layer(layername, config){
 		f.reset = function() {
 			if (config.maptype == 'OpenLayers')
 				_this.set_svg();
-			var opacity = 1;
-			if (this.minZoomLevel < _this.getZoomLevel())
-			{
-			    var opacity = 0;
-			}
+			//var opacity = 1;
+			//if (this.minZoomLevel > _this.getZoomLevel())
+			//{
+			//    var opacity = 0;
+			//}
 			g.selectAll(".entity")
 			    .each(function(d,i){
 			        var entity = d3.select(this);
@@ -353,13 +355,7 @@ function d3layer(layername, config){
                             })
                     }
                     
-                        entity.select('g.zoomable')
-                        .attr('opacity',function(d){
-                                if (d.minzoomlevel && d.minzoomlevel < _this.getZoomLevel()){
-                                    return 1;
-                                }
-                                else return 0;
-                        })
+                    entity.select('g.zoomable')
                         .attr("transform", function(d){
                             if (d.geometry.type == 'Point'){
                                 var x = _this.project(d.geometry.coordinates)[0];
@@ -370,8 +366,15 @@ function d3layer(layername, config){
                                 var y = _this.geoPath.centroid(d)[1];
                             }
                             return "translate(" + x + "," + y + ")"
+                        })
+                        .transition().duration(500)
+                        .attr('opacity',function(d){
+                                if (d.minzoomlevel && d.minzoomlevel > _this.getZoomLevel()){
+                                    return 0;
+                                }
+                                else return 1;
                         });
-                        
+    
                     
 			    });
 		}
