@@ -11,6 +11,7 @@ var d3layer = function(layername, config){
 		this.g = config.g;
 		this.map = config.map;
 		this.style = config.style;
+		this.autoclean = config.autoclean || true;
 		this.minzoomlevel = config.minzoomlevel || 1;
 		this.mouseoverContent = config.mouseoverContent;
 		this.classfield = config.classfield;
@@ -178,6 +179,11 @@ var d3layer = function(layername, config){
 		    return textLocation;
 		}
 		
+		f.clean = function(){
+		    g.selectAll(".entity").remove();
+		    return f;
+		}
+		
 		//The part where new data comes in
 		f.data = function(collection){
 		    if (!collection){
@@ -283,8 +289,9 @@ var d3layer = function(layername, config){
                         })
 			    }
 			});
-			//On exit	
+			//On exit
 			entities.exit().transition().duration(500).attr('opacity',0).remove();
+			
 			
 			function onmouseover(item, d){
 			    if (_this.mouseoverContent){

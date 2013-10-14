@@ -125,21 +125,23 @@
             btnverblijf    = document.getElementById('btnverblijf'),
             btnambulant    = document.getElementById('btnambulant'),
             btnlinks    = document.getElementById('btnlinks');
-        btnlocaties.addEventListener("touchstart", togglelocaties, false);
+            btnkunst    = document.getElementById('btnkunst');
+        btnlocaties.addEventListener("touchend", togglelocaties, false);
         btnlocaties.addEventListener("click", togglelocaties, false);
-        btnmarktaandeel.addEventListener("touchstart", togglemarktaandeel, false);
+        btnmarktaandeel.addEventListener("touchend", togglemarktaandeel, false);
         btnmarktaandeel.addEventListener("click", togglemarktaandeel, false);
-        btnrelaties.addEventListener("touchstart", togglerelaties, false);
+        btnrelaties.addEventListener("touchend", togglerelaties, false);
         btnrelaties.addEventListener("click", togglerelaties, false);
         btndagbesteding.addEventListener("click",toggledagbesteding,false);
         btnverblijf    .addEventListener("click",toggleverblijf    ,false);
         btnambulant    .addEventListener("click",toggleambulant    ,false);
-        btndagbesteding.addEventListener("touchstart",toggledagbesteding,false);
-        btnverblijf    .addEventListener("touchstart",toggleverblijf    ,false);
-        btnambulant    .addEventListener("touchstart",toggleambulant    ,false);
+        btndagbesteding.addEventListener("touchend",toggledagbesteding,false);
+        btnverblijf    .addEventListener("touchend",toggleverblijf    ,false);
+        btnambulant    .addEventListener("touchend",toggleambulant    ,false);
         btnlinks    .addEventListener("click",togglelinks    ,false);
-        btnlinks    .addEventListener("touchstart",togglelinks    ,false);
-        
+        btnlinks    .addEventListener("touchend",togglelinks    ,false);
+        btnkunst    .addEventListener("click",togglekunst    ,false);
+        btnkunst    .addEventListener("touchend",togglekunst    ,false);
         
         function togglelocaties(){
             if (zorglocatielayer.data().features.length > 0){
@@ -188,6 +190,7 @@
                 dagbestedinglayer.links = self.dagbestedingdata.links;
                 dagbestedinglayer.nodes = self.dagbestedingdata.nodes;
                 dagbestedinglayer.start();
+                redrawMap();
             }
         }
         
@@ -205,6 +208,7 @@
                 ambulantlayer.links = self.ambulantdata.links;
                 ambulantlayer.nodes = self.ambulantdata.nodes;
                 ambulantlayer.start();
+                redrawMap();
             }
         }
         function toggleverblijf(){
@@ -221,6 +225,7 @@
                 behandellayer.links = self.behandeldata.links;
                 behandellayer.nodes = self.behandeldata.nodes;
                 behandellayer.start();
+                redrawMap();
             }
         }
         function clearrelaties(){
@@ -250,11 +255,25 @@
             }
         }
         
-        var handleNewExtent = function(data){
-            self._d3layers.forEach(function(l){
-                l.reset();
-            });
-		};
+        function togglekunst(){
+            if ($(this).hasClass('selected')){
+                $(this).removeClass('selected');
+                d3.selectAll('line').style('stroke', '990099').style('opacity',0);
+                d3.selectAll('circle').each(function(d){
+                    d.x = self.map.latLngToLayerPoint(new L.LatLng(d.ycoord, d.xcoord)).x;
+                    d.y = self.map.latLngToLayerPoint(new L.LatLng(d.ycoord, d.xcoord)).y;
+                    d.fixed = true;
+               });
+               redrawMap();
+            }
+            else {
+                $(this).addClass('selected');
+                d3.selectAll('line').style('stroke', '990099').style('opacity',0.2);
+                d3.selectAll('circle').each(function(d){if (d.groep != 'loc') d.fixed = false});
+                redrawMap();
+            }
+        }
+        
 
         var tonerlayer = new L.StamenTileLayer("toner");
         var osmlightUrl = 'http://{s}.tile2.opencyclemap.org/transport/{z}/{x}/{y}.png';
@@ -263,22 +282,27 @@
         });		
         var map = L.map('map',{ 
             zoomControl:false,
-            layers: [osmlayer]
+            layers: [tonerlayer]
         });
         this.map = map;
         // add an OpenStreetMap tile layer
         
-        //map.addLayer(osmlayer);
-        //map.addLayer(tonerlayer);
-        osmlayer.setOpacity(0.5);
-        map.setView([51.641921,4.912838], 10);
-        map.on('moveend',function(e){
+        function redrawMap(){
             d3layers.forEach(function(layer){
              layer.reset();
             });
             behandellayer.redraw(map);
             ambulantlayer.redraw(map);
             dagbestedinglayer.redraw(map);
+        }
+        
+        //map.addLayer(osmlayer);
+        //map.addLayer(tonerlayer);
+        osmlayer.setOpacity(0.5);
+        tonerlayer.setOpacity(0.3);
+        map.setView([51.641921,4.912838], 10);
+        map.on('moveend',function(e){
+            redrawMap();
 		});
 
         /* Map */
@@ -437,9 +461,29 @@
             labelconfig: {
                 field: "omschr"
             },
-            classfield: "type"
+            classfield: "type",
+            style: {
+                radius: 10
+            }
         });
         d3layers.push(zorglocatielayer);
+        
+        var routelayer = new d3layer("routelayer",{
+            maptype: "Leaflet",
+            map: map,
+            type: "path",
+            autoclean: false,
+            mouseoverContent: "mouseoverhtml",
+            style: {
+                stroke: "purple",
+                'stroke-width': '3px',
+                fill: 'none',
+                'stroke-opacity': 0.8,
+                'fill-opacity': 0.2
+            }
+        });
+        d3layers.push(routelayer);
+        window.routelayer = routelayer;
         
         //Relaties on map
         var width = 800,
@@ -607,6 +651,7 @@
 			
 			<div class='ctrls lev3 hidden relaties'>
 			    <a class='ctrl' href='#' id='btnlinks'>Lijnen</a>
+			    <a class='ctrl' href='#' id='btnkunst'>Kunst</a>
 			</div>
 		</div>
 	<div id="legend-ui"></div>

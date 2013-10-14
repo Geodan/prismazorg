@@ -9,7 +9,8 @@ function nodeOverlay(svg,w,h) {
     this.links = links;
     var svg = svg;
     var _this = this;
-    
+    var routefeats = {"type": "FeatureCollection","features":[]};
+    var counter = 0;
     //Adding a tooltip div
     var div = d3.select("body").append("div")   
         .attr("class", "tooltip")               
@@ -34,20 +35,58 @@ function nodeOverlay(svg,w,h) {
         }
     };     
         
-        
+    
+    var routing = function(d){
+        //TODO: fetch routing information
+        var fromcoordx = d.source.xcoord;
+        var fromcoordy = d.source.ycoord;
+        var tocoordx = d.target.xcoord;
+        var tocoordy = d.target.ycoord;
+        var url = "http://services.geodan.nl/data/route?Request=getroute&fromcoordx="+fromcoordx+"&fromcoordy="+fromcoordy+"&tocoordx="+tocoordx+"&tocoordy="+tocoordy+"&returntype=coords&srs=epsg:4326&routetype=fastest&format=min-km&outputformat=geojson&uid=tom_demo_6324b0360cc87fc0b70225c8fd29210";
+        var respons = function(data,N){
+            data.features.forEach(function(d){
+               d.id = new Date().getTime();
+               d.style = {'stroke':color(N)};
+               d.mouseoverhtml = Math.round(d.properties.distance) + "km  / " + Math.round(d.properties.duration) + "min.";
+               routefeats.features.push(d);     
+            });
+            routelayer.data(routefeats);
+        }
+        var request = function(N) {
+            return function(){
+                var color = d3.scale.category20();
+                d3.json(url, function(data){
+                   respons(data,N); 
+                });
+            }
+        }
+        counter = counter + 1; //Incremental coounter to avoid flooding the server
+        setTimeout(request(counter),200 * counter);
+    }
+    
     // Toggle children on click.
     var click = function(d) {
-        if (d.active){
+        if (d.active){ //toggle OFF
+            
+            routefeats = {"type": "FeatureCollection","features":[]};
+            routelayer.data(routefeats);
             d.active = false;
-            d3.select(this).attr('r',5);
-            d3.selectAll('.link'+d.id).style('stroke','none');
+            d3.selectAll('circle').style('opacity',1);
+            d3.select(this).each(_this.styling);
+            
+            //d3.selectAll('.link'+d.id).style('stroke','none');
         }
-        else{
+        else{ //toggle ON
+            counter = 0;
             d.active = true;
-            d3.select(this).attr('r',10);
-            var color = 'steelBlue'
-            if (d.groep == 'mdw') color = 'orange';
-            d3.selectAll('.link'+d.id).style('stroke',color);
+            d3.selectAll('circle').style('opacity',0.1);
+            d3.select(this).style('opacity',1.0).attr('r',10);
+            //var color = 'steelBlue'
+            //if (d.groep == 'mdw') color = 'orange';
+            //d3.selectAll('.link'+d.id)
+            //    .style('stroke',color)
+            d3.selectAll('.link'+d.id)
+                .each(routing);
         }
     }
     
@@ -94,16 +133,23 @@ function nodeOverlay(svg,w,h) {
       force.nodes(this.nodes)
         .links(this.links)
         .start();
-      
-
+    
+    //Remove old routes  
+    routefeats = {"type": "FeatureCollection","features":[]};
+    routelayer.data(routefeats);
+    counter = 0; //reset counter
+    
     link = link.data(force.links());
       var linkenter = link.enter().append("line")
 //        .classed("link", true)
-        .attr("id",function(d) { return d.source.id + "-" + d.target.id;})
+        .attr("id",function(d) { 
+            return d.source.id + "-" + d.target.id;
+        })
         .attr("class",function(d) { return "link"+ d.source.id + " link" + d.target.id;})
         .style('stroke','none')
         .style('stroke-width','2px')
-        .style('opacity',0.7);
+        .style('opacity',0.7)
+        ;
       link.exit().remove();
       
       node = node.data(force.nodes());
@@ -127,10 +173,10 @@ function nodeOverlay(svg,w,h) {
         }
       }
       function onmouseout(d){
-        if (!d.active){
+        //if (!d.active){
             d3.selectAll('.link'+d.id)
                 .style('stroke','none');
-        }
+        //}
         div.transition()        
             .duration(500)      
             .style("opacity", 0); 
@@ -162,14 +208,14 @@ function nodeOverlay(svg,w,h) {
       
       node.selectAll('text').text(function(d){return d.name;});
       node.exit().remove();
-      
-      
+      tmp = force;
       force.start();
-      d3.timer(force.resume);
+      //d3.timer(force.resume);
     }
     this.start = start;
   
     var redraw = function(map){
+        var loosenodes = false;
         var project = function(x){
             var point = map.latLngToLayerPoint(new L.LatLng(x[1], x[0])); //Leaflet version
             return [point.x,point.y];
@@ -181,18 +227,29 @@ function nodeOverlay(svg,w,h) {
         node = node.data(force.nodes(), function(d) { return d.id;});
         node.each(function(d){
             
-            if (d.xcoord){
+            if (d.xcoord && d.fixed){
               coords = [d.xcoord, d.ycoord];
               d.px = project(coords)[0];
               d.py = project(coords)[1];
+              d.cx = project(coords)[0];
+              d.cy = project(coords)[1];
             }
             else {
+                loosenodes = true;
                //d.px = d.px + _this.moved[0];
                //d.py = d.py + _this.moved[1];
             }
         });
-        force.start();
-        //d3.timer(force.resume);
+        if (!loosenodes){
+            //Somewhat dubious method to calculate node positions when we do not need force layout.
+            force.start();
+            var n = 1;
+            for (var i = 0; i < n; ++i) force.tick();
+            force.stop();
+        }
+        else
+            force.start();
+        
     }
     this.redraw = redraw;
     
