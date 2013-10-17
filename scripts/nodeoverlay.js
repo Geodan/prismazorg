@@ -47,6 +47,9 @@ function nodeOverlay(svg,w,h) {
             data.features.forEach(function(d){
                d.id = new Date().getTime();
                d.style = {'stroke':color(N)};
+               if (d.properties.distance > 20) d.style.stroke = 'red';
+               else if (d.properties.distance > 10) d.style.stroke = 'orange';
+               else d.style.stroke = 'green';
                d.mouseoverhtml = Math.round(d.properties.distance) + "km  / " + Math.round(d.properties.duration) + "min.";
                routefeats.features.push(d);     
             });
