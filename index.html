@@ -117,7 +117,7 @@
     </style>
     
     <script type="text/javascript">
-    var d3layers = [];
+    //var d3layers = [];
     var tmp;    
     $(document).ready(function(){
         var self = this;
@@ -292,7 +292,7 @@
         // add an OpenStreetMap tile layer
         
         function redrawMap(){
-            d3layers.forEach(function(layer){
+            layermanager.layers().forEach(function(layer){
              layer.reset();
             });
             behandellayer.redraw(map);
@@ -431,8 +431,8 @@
               }
         }
         
-        
-        var gemeentelyr = new d3layer("gemeentelayer",{
+        var layermanager = new d3l; 
+        var gemeentelyr = layermanager.layers("gemeentelayer",{
             maptype: "Leaflet",
             map: map,
             type: "path",
@@ -454,8 +454,8 @@
                 'fill-opacity': 0.2
             }
         });
-        d3layers.push(gemeentelyr);
-        var zorglocatielayer = new d3layer("zorglocatielayer",{
+        //d3layers.push(gemeentelyr);
+        var zorglocatielayer = layermanager.layers("zorglocatielayer",{
             maptype: "Leaflet",
             map: map,
             type: "path",
@@ -470,9 +470,9 @@
                 radius: 10
             }
         });
-        d3layers.push(zorglocatielayer);
+        //d3layers.push(zorglocatielayer);
         
-        var routelayer = new d3layer("routelayer",{
+        var routelayer = layermanager.layers("routelayer",{
             maptype: "Leaflet",
             map: map,
             type: "path",
@@ -486,7 +486,7 @@
                 'fill-opacity': 0.2
             }
         });
-        d3layers.push(routelayer);
+        //d3layers.push(routelayer);
         window.routelayer = routelayer;
         
         //Relaties on map
