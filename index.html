@@ -17,16 +17,13 @@
     <script type="text/javascript" src="http://maps.stamen.com/js/tile.stamen.js?v1.2.3"></script>
     
     <!-- D3 -->
-    <script src="http://d3js.org/d3.v3.min.js"></script>
-    <script src="http://d3js.org/topojson.v1.min.js"></script>
-    <script src="http://d3js.org/queue.v1.min.js"></script>
-    <script type="text/javascript" src="./libs/d3.csv.js"></script>
-    <script type="text/javascript" src="./libs/d3.geo.js"></script>
-    <script type="text/javascript" src="./libs/d3.geom.js"></script>
+    <script src="./libs/d3.v3.min.js"></script>
+    <script src="./libs/topojson.v1.min.js"></script>
+    <script src="./libs/queue.v1.min.js"></script>
     
     <!-- CUSTOM--> 
-    <script type="text/javascript" src="./scripts/d3layer.js"></script>
-    <script type="text/javascript" src="./scripts/nodeoverlay.js"></script>
+    <script type="text/javascript" src="./libs/d3layer/d3layer.js"></script>
+    <script type="text/javascript" src="./libs/d3layer/d3_nodeoverlay.js"></script>
     <style>
         #map { position:absolute; top:0; bottom:0; width:100%;}
         .leaflet-container {
@@ -59,14 +56,14 @@
     }
      .ctrls{display: block;}
     .ctrl {
-        /*display:inline-block;*/
+        display:inline-block;
         display: relative;
         width:140px;
         height:35px;
         /*float:left;*/
         font-weight: 400;
         text-decoration:none;
-        color:#333;
+        color:#333;      
         border-left:1px solid #777;
         border-top:1px solid #777;
         text-align:center;

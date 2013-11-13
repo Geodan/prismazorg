@@ -1,4 +1,11 @@
 var tmp;
+//Method for moving elements to the front (used to get points on top of polygons)
+//Idea from: http://stackoverflow.com/questions/14167863/how-can-i-bring-a-circle-to-the-front-with-d3
+d3.selection.prototype.moveToFront = function() {
+  return this.each(function(){
+  this.parentNode.appendChild(this);
+  });
+};
 var d3layer = function(layername, config){
 		var f = {}, bounds, feature, collection;
 		this.f = f;
@@ -7,7 +14,6 @@ var d3layer = function(layername, config){
 		f.layername = layername;
 		this.data;
 		this.type = config.type || "path";
-		this.freq = 100;
 		this.g = config.g;
 		this.map = config.map;
 		this.style = config.style;
