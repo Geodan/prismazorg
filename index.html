@@ -318,22 +318,23 @@
             
         var svg = d3.select("#map");
         
-        var addPieChart = function(d,i,ent,_this){
+        var addPieChart = function(d,ent){
+            
             var radius = 20,
             padding = 10;
             
-            _this.color = d3.scale.ordinal()
+            var color = d3.scale.ordinal()
                 .range(["#00ccff", 
                     "#0000cc", 
                     "#ff9933",
                     "#990000"
                    ]);
             
-            _this.arc = d3.svg.arc()
+            var arc = d3.svg.arc()
                 .outerRadius(radius )
                 .innerRadius(radius - padding);
                 
-            _this.pie = d3.layout.pie()
+            var pie = d3.layout.pie()
                 .sort(null)
                 .value(function(d) { 
                     return d.value; 
@@ -345,30 +346,25 @@
                     .attr('width',150)
                     .attr('height',150)
                     .append('g')
-                    .attr('class','zoomable')
-                    .attr("transform", function(d){
-                        var x = _this.project(d.geometry.coordinates)[0];
-                        var y = _this.project(d.geometry.coordinates)[1];
-                        return "translate(" + x + "," + y + ")"
-                    });
+                    .attr('class','zoomable');
                  
                  chart.selectAll('.arc')
                     .data(function(d){
-                        return _this.pie(d.properties.values);
+                        return pie(d.properties.values);
                     })
                     .enter().append("path")
                     .attr("class", "arc")
-                    .attr("d", _this.arc)
+                    .attr("d", arc)
                     .style("fill", function(x) { 
-                            return _this.color(x.data.key); 
+                            return color(x.data.key); 
                     });
               }
-          }
-        var addBarChart = function(d,i,ent, _this){
-            _this.color = d3.scale.ordinal()
+        }
+        var addBarChart = function(d,ent){
+            var color = d3.scale.ordinal()
                 .range(["#98abc5", "#7b6888", "#a05d56", "#ff8c00"]);
             var typenames = d3.keys({"Regulier":0,"Specifiek":10,"Prisma regulier":20,"Prisma specifiek":30});
-            _this.color.domain(typenames);
+            color.domain(typenames);
             
             var x = d3.scale.ordinal();
                 
@@ -387,8 +383,6 @@
             //x.domain([0,100]);
             //y.domain([0, d3.max(_this.data, function(d) { return d3.max(d.values, function(d) { return d.value; }); })]);
             y.domain([0,300]);
-
-
           
               var entity = d3.select(ent);
               if (d.properties.values){
@@ -397,12 +391,8 @@
                     .attr('width',50)
                     .attr('height',50)
                     .append('g')
-                    .attr('class','zoomable')
-                    .attr("transform", function(d){
-                        xloc = _this.geoPath.centroid(d)[0];
-                        yloc = _this.geoPath.centroid(d)[1];
-                        return "translate(" + xloc + "," + yloc + ")"
-                    });
+                    .attr('class','zoomable');
+
                  chart.selectAll('.stack')
                     .data(function(d){
                         return d.properties.values;
@@ -426,7 +416,7 @@
                         return 0 - y(d.value);//100 is top of range in y-scale 
                     })
                     .style("fill", function(d) { 
-                        return _this.color(d.key);  
+                        return color(d.key);  
                     });
               }
         }
@@ -435,6 +425,7 @@
             maptype: "Leaflet",
             map: map,
         }); 
+        tmp = layermanager;
         var gemeentelyr = layermanager.layers("gemeentelayer",{
             type: "path",
             eachFunctions: [addBarChart],
