@@ -431,10 +431,11 @@
               }
         }
         
-        var layermanager = new d3l; 
-        var gemeentelyr = layermanager.layers("gemeentelayer",{
+        var layermanager = new d3l({
             maptype: "Leaflet",
             map: map,
+        }); 
+        var gemeentelyr = layermanager.layers("gemeentelayer",{
             type: "path",
             eachFunctions: [addBarChart],
             labels: false,
@@ -456,8 +457,6 @@
         });
         //d3layers.push(gemeentelyr);
         var zorglocatielayer = layermanager.layers("zorglocatielayer",{
-            maptype: "Leaflet",
-            map: map,
             type: "path",
             eachFunctions: [addPieChart],
             mouseoverContent: "mouseoverhtml",
@@ -473,8 +472,6 @@
         //d3layers.push(zorglocatielayer);
         
         var routelayer = layermanager.layers("routelayer",{
-            maptype: "Leaflet",
-            map: map,
             type: "path",
             autoclean: false,
             mouseoverContent: "mouseoverhtml",
@@ -488,7 +485,7 @@
         });
         //d3layers.push(routelayer);
         window.routelayer = routelayer;
-        
+        layermanager.legend({legendid:'#legend-ui'});
         //Relaties on map
         var width = 800,
             height = 800;
