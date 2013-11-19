@@ -298,6 +298,7 @@
             behandellayer.redraw(map);
             ambulantlayer.redraw(map);
             dagbestedinglayer.redraw(map);
+            layermanager.legend({legendid:'#legend-ui'});
         }
         
         //map.addLayer(osmlayer);
@@ -425,8 +426,9 @@
             maptype: "Leaflet",
             map: map,
         }); 
-        tmp = layermanager;
-        var gemeentelyr = layermanager.layers("gemeentelayer",{
+        window.layermanager = layermanager;//For debugging
+        
+        var gemeentelyr = layermanager.layers("Marktaandeel",{
             type: "path",
             eachFunctions: [addBarChart],
             labels: false,
@@ -446,8 +448,12 @@
                 'fill-opacity': 0.2
             }
         });
-        //d3layers.push(gemeentelyr);
-        var zorglocatielayer = layermanager.layers("zorglocatielayer",{
+        
+        var color10 = d3.scale.category10();
+        var locatiecolor = function(d){
+            return color10(d.properties.type);
+        }
+        var zorglocatielayer = layermanager.layers("Locaties",{
             type: "path",
             eachFunctions: [addPieChart],
             mouseoverContent: "mouseoverhtml",
@@ -455,14 +461,20 @@
             labelconfig: {
                 field: "omschr"
             },
+            legend: true,
+            legendconfig: {
+                key: "type",
+                fillcolor: locatiecolor
+            },
             classfield: "type",
             style: {
-                radius: 10
+                radius: 10,
+                fill: locatiecolor
             }
         });
-        //d3layers.push(zorglocatielayer);
         
-        var routelayer = layermanager.layers("routelayer",{
+        
+        var routelayer = layermanager.layers("Route",{
             type: "path",
             autoclean: false,
             mouseoverContent: "mouseoverhtml",
@@ -474,9 +486,10 @@
                 'fill-opacity': 0.2
             }
         });
-        //d3layers.push(routelayer);
+        
         window.routelayer = routelayer;
         layermanager.legend({legendid:'#legend-ui'});
+        
         //Relaties on map
         var width = 800,
             height = 800;
@@ -538,17 +551,18 @@
                     {key: 'regulier_bezet', value: d.properties.bezetting_regulier},
                     {key: 'specifiek_beschikbaar', value: d.properties.bezetting_specifiek * rand2},
                     {key: 'specifiek_bezet', value: d.properties.bezetting_specifiek}
-                 ]
-                var style = {};
-                if (d.properties.type == 'REGULIER')
-                    style.fill = "#009900";
-                if (d.properties.type == 'SPECIFIEK')
-                    style.fill = "#0066ff";
-                if (d.properties.type == 'SPECIAAL')
-                    style.fill = "#cc0000";
-                if (d.properties.type == 'D&A')
-                    style.fill = "#ffcc00";
-                d.style = style;
+                 ];
+                 
+                //var style = {};
+                //if (d.properties.type == 'REGULIER')
+                //    style.fill = "#009900";
+                //if (d.properties.type == 'SPECIFIEK')
+                //    style.fill = "#0066ff";
+                //if (d.properties.type == 'SPECIAAL')
+                //    style.fill = "#cc0000";
+                //if (d.properties.type == 'D&A')
+                //    style.fill = "#ffcc00";
+                //d.style = style;
             })
             self.zorglocaties = data;
             
