@@ -99,7 +99,8 @@
     div.tooltip {   
       position: absolute;           
       text-align: left;           
-      width: auto;                  
+      width: auto;
+      max-width: 400px;
       height: auto;                 
       padding: 5px;             
       font: 16px sans-serif;
@@ -113,6 +114,9 @@
     circle {
         cursor: pointer;
     }
+    path {
+        cursor: pointer;
+    }
    
     </style>
     
@@ -123,6 +127,8 @@
         var self = this;
         /* Set the buttons */
         var btnlocaties = document.getElementById('btnlocaties'),
+            btnmijnlocaties = document.getElementById('btnmijnlocaties'),
+            btnlocatiesconc = document.getElementById('btnlocatiesconc'),
             btnmarktaandeel = document.getElementById('btnmarktaandeel'),
             btnrelaties = document.getElementById('btnrelaties'),
             btndagbesteding= document.getElementById('btndagbesteding'),
@@ -132,6 +138,10 @@
             btnkunst    = document.getElementById('btnkunst');
         btnlocaties.addEventListener("touchend", togglelocaties, false);
         btnlocaties.addEventListener("click", togglelocaties, false);
+        btnmijnlocaties.addEventListener("touchend", togglemijnlocaties, false);
+        btnmijnlocaties.addEventListener("click", togglemijnlocaties, false);
+        btnlocatiesconc.addEventListener("touchend", togglelocatiesconc, false);
+        btnlocatiesconc.addEventListener("click", togglelocatiesconc, false);
         btnmarktaandeel.addEventListener("touchend", togglemarktaandeel, false);
         btnmarktaandeel.addEventListener("click", togglemarktaandeel, false);
         btnrelaties.addEventListener("touchend", togglerelaties, false);
@@ -148,6 +158,17 @@
         btnkunst    .addEventListener("touchend",togglekunst    ,false);
         
         function togglelocaties(){
+             if ($('.ctrls.locaties').hasClass('hidden')){
+                $('.ctrls.locaties').removeClass('hidden');
+                $(this).addClass('selected');
+            }
+            else {
+                clearrelaties();
+                $('.ctrls.locaties').addClass('hidden');
+                $(this).removeClass('selected');
+            }
+       }
+       function togglemijnlocaties(){
             if (zorglocatielayer.data().features.length > 0){
                 $(this).removeClass('selected');
                 zorglocatielayer.data({features:[]});
@@ -155,6 +176,16 @@
             else {
                 $(this).addClass('selected');
                 zorglocatielayer.data(self.zorglocaties);
+            }
+        }
+      function togglelocatiesconc(){
+            if (meewoonlayer.data().features.length > 0){
+                $(this).removeClass('selected');
+                meewoonlayer.data({features:[]});
+                }
+            else {
+                $(this).addClass('selected');
+                meewoonlayer.data(self.locatiesconc);
             }
         }
         function togglemarktaandeel(){
@@ -179,6 +210,8 @@
                 $(this).removeClass('selected');
             }
         }
+
+
         
         function toggledagbesteding(){
             
@@ -273,7 +306,9 @@
             else {
                 $(this).addClass('selected');
                 d3.selectAll('line').style('stroke', '990099').style('opacity',0.2);
-                d3.selectAll('circle').each(function(d){if (d.groep != 'loc') d.fixed = false});
+                d3.selectAll('circle').each(function(d){
+                    if (d.product != 'AMBULANT' && d.groep != 'loc') d.fixed = false;
+                });
                 redrawMap();
             }
         }
@@ -325,10 +360,10 @@
             padding = 10;
             
             var color = d3.scale.ordinal()
-                .range(["#00ccff", 
-                    "#0000cc", 
-                    "#ff9933",
-                    "#990000"
+                .domain(["beschikbaar","regulier_bezet","specifiek_bezet"])
+                .range(["#00cc00", 
+                    "#cc0033", 
+                    "#ff3333"
                    ]);
             
             var arc = d3.svg.arc()
@@ -449,9 +484,12 @@
             }
         });
         
-        var color10 = d3.scale.category10();
+        var color = d3.scale.ordinal()
+            .domain(["REGULIER", "SPECIFIEK", "D&A", "PZE", "SPECIAAL"])
+            .range(["green", "blue","orange","grey","red"]);
+            
         var locatiecolor = function(d){
-            return color10(d.properties.type);
+            return color(d.properties.type);
         }
         var zorglocatielayer = layermanager.layers("Locaties",{
             type: "path",
@@ -473,6 +511,32 @@
             }
         });
         
+        var calculateradius = function(d){
+            var scale = d3.scale.linear().domain([0,100]).range([2,20]);
+            return scale(d.properties.aantalbewoners);
+        }
+        var color20 = d3.scale.category20();
+        var locatiecolor = function(d){
+            return color20(d.properties.zorgaanbieder);
+        }
+        var meewoonlayer = layermanager.layers("Locaties_Concurrentie",{
+            type: "path",
+            mouseoverContent: "mouseoverhtml",
+            labels: false,
+            labelconfig: {
+                field: "omschr"
+            },
+            legend: false,
+            legendconfig: {
+                key: "zorgaanbieder",
+                fillcolor: locatiecolor
+            },
+            classfield: "zorgaanbieder",
+            style: {
+                radius: calculateradius,
+                fill: locatiecolor
+            }
+        });
         
         var routelayer = layermanager.layers("Route",{
             type: "path",
@@ -512,6 +576,7 @@
             .await(ready);
          function ready(error, gemeenten){
             self.gemeenten = gemeenten;
+            
             gemeenten.features.forEach(function(d,i){
                 var style = {};
                 if (valueById.get(d.id))
@@ -538,18 +603,16 @@
                 var rand2 = Math.random();
                 d.mouseoverhtml = "<b>" + d.properties.locatie_omschr + "</b>"
                     + "<br>Type " + d.properties.type
-                    + "<br><table><tr><th colspan=2>Regulier</th></tr>"
-                    + "<tr><td>Bezet: " + d.properties.bezetting_regulier
-                    + "</td><td>Vrij: " + Math.round(d.properties.bezetting_regulier * rand1,0)
-                    + "</tr><tr><th colspan=2>Specifiek</th></tr>"
-                    + "<tr><td>Bezet: " + d.properties.bezetting_specifiek
-                    + "</td><td>Vrij: " + Math.round(d.properties.bezetting_specifiek * rand2,0)
+                    + "<br><table><tr><th colspan=2>Plaatsen</th></tr>"
+                    + "<tr><td>Totaal: " + (d.properties.bezetting_regulier + d.properties.bezetting_specifiek)
+                    + "</td><td>Bezet regulier: " + d.properties.bezetting_regulier
+                    + "</td><td>Bezet specifiek: " + d.properties.bezetting_specifiek
+                    + "</td><td>Beschikbaar: " + 0 //TODO: give real value
                     + "</td></tr></table>";
                  ;
                 d.properties.values = [
-                    {key: 'regulier_beschikbaar', value: d.properties.bezetting_regulier * rand1},
+                    {key: 'beschikbaar', value: 10}, //TODO: give real value
                     {key: 'regulier_bezet', value: d.properties.bezetting_regulier},
-                    {key: 'specifiek_beschikbaar', value: d.properties.bezetting_specifiek * rand2},
                     {key: 'specifiek_bezet', value: d.properties.bezetting_specifiek}
                  ];
                  
@@ -567,6 +630,22 @@
             self.zorglocaties = data;
             
             zorglocatielayer.data({features:[]});
+        });
+        
+        //LOADING meewoon data
+        d3.json('./service/meewoon.php',function(e,data){
+            if (e) {console.warn(e.message);return;};
+            data.features.forEach(function(d){
+                d.mouseoverhtml = "<b>" + d.properties.zorgaanbieder + "</b>"
+                    + "<br>Aantal bewoners " + d.properties.aantalbewoners
+                    + "<br>Leeftijd cat. " + d.properties.leeftijd
+                    + "<br>Geslacht " + d.properties.geslacht
+                    + "<br>Doelgroep <small>" + d.properties.doelgroepomschrijving + "</small>"
+                    ;
+                 ;
+            });
+            self.locatiesconc = data;
+            meewoonlayer.data({features:[]});
         });
         
         //LOADING relaties
@@ -646,6 +725,10 @@
 			<h3>door Geodan</h3>
 			<div class='ctrls lev1'>
 				<a class='ctrl' href='#' id='btnlocaties'>Locaties</a><br>
+				<div class='ctrls lev2 hidden locaties'>
+				    <a class='ctrl' href='#' id='btnmijnlocaties'>Prisma</a><br>
+				    <a class='ctrl' href='#' id='btnlocatiesconc'>Concurrentie</a><br>
+				</div>
 				<a class='ctrl' href='#' id='btnmarktaandeel'>Marktaandeel</a><br>
 				<a class='ctrl' href='#' id='btnrelaties'>Relaties</a><br>
 				<div class='ctrls lev2 hidden relaties'>
