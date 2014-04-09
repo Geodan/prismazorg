@@ -128,6 +128,7 @@
         /* Set the buttons */
         var btnlocaties = document.getElementById('btnlocaties'),
             btnmijnlocaties = document.getElementById('btnmijnlocaties'),
+            btnlocatiebezetting = document.getElementById('btnlocatiebezetting'),
             btnlocatiesconc = document.getElementById('btnlocatiesconc'),
             btnmarktaandeel = document.getElementById('btnmarktaandeel'),
             btnrelaties = document.getElementById('btnrelaties'),
@@ -140,6 +141,8 @@
         btnlocaties.addEventListener("click", togglelocaties, false);
         btnmijnlocaties.addEventListener("touchend", togglemijnlocaties, false);
         btnmijnlocaties.addEventListener("click", togglemijnlocaties, false);
+        btnlocatiebezetting.addEventListener("touchend", togglelocatiebezetting, false);
+        btnlocatiebezetting.addEventListener("click", togglelocatiebezetting, false);
         btnlocatiesconc.addEventListener("touchend", togglelocatiesconc, false);
         btnlocatiesconc.addEventListener("click", togglelocatiesconc, false);
         btnmarktaandeel.addEventListener("touchend", togglemarktaandeel, false);
@@ -178,6 +181,18 @@
                 zorglocatielayer.data(self.zorglocaties);
             }
         }
+
+        function togglelocatiebezetting(){
+            if (zorglocatiebezettinglayer.data().features.length > 0){
+                $(this).removeClass('selected');
+                zorglocatiebezettinglayer.data({features:[]});
+            }
+            else {
+                $(this).addClass('selected');
+                zorglocatiebezettinglayer.data(self.zorglocaties);
+            }
+        }
+
       function togglelocatiesconc(){
             if (meewoonlayer.data().features.length > 0){
                 $(this).removeClass('selected');
@@ -361,9 +376,9 @@
             
             var color = d3.scale.ordinal()
                 .domain(["beschikbaar","regulier_bezet","specifiek_bezet"])
-                .range(["#00cc00", 
-                    "#cc0033", 
-                    "#ff3333"
+                .range(["#00cc00", //groen
+                    "#cc0033", // donkerrood
+                    "#ff3333" // lichtrood
                    ]);
             
             var arc = d3.svg.arc()
@@ -459,7 +474,7 @@
         
         var layermanager = new d3l({
             maptype: "Leaflet",
-            map: map,
+            map: map
         }); 
         window.layermanager = layermanager;//For debugging
         
@@ -510,7 +525,33 @@
                 fill: locatiecolor
             }
         });
-        
+
+        var bezettingcolor = d3.scale.ordinal()
+                .domain(["vrij", "bezet"])
+                .range(["green", "red"]);
+
+        var locatiebezettingcolor = function(d){
+            return bezettingcolor(d.properties.bezetting);
+        }
+        var zorglocatiebezettinglayer = layermanager.layers("Locatiebezetting",{
+            type: "path",
+            mouseoverContent: "mouseoverhtml",
+            labels: false,
+            labelconfig: {
+                field: "omschr"
+            },
+            legend: true,
+            legendconfig: {
+                key: "bezetting",
+                fillcolor: locatiebezettingcolor
+            },
+            classfield: "bezetting",
+            style: {
+                radius: 10,
+                fill: locatiebezettingcolor
+            }
+        });
+
         var calculateradius = function(d){
             var scale = d3.scale.linear().domain([0,100]).range([2,20]);
             return scale(d.properties.aantalbewoners);
@@ -599,12 +640,15 @@
         d3.json('./data/zorglocaties.json',function(data){
             data.features.forEach(function(d){
                 d.minzoomlevel = 11;
+                d.properties.bezetting_totaal = d.properties.bezetting_regulier + d.properties.bezetting_specifiek;
+                d.properties.bezetting = d.properties.bezetting_totaal == 0 ? "vrij" : "bezet";
                 var rand1 = Math.random(); //Some magical numbers because we lack data..
                 var rand2 = Math.random();
                 d.mouseoverhtml = "<b>" + d.properties.locatie_omschr + "</b>"
                     + "<br>Type " + d.properties.type
                     + "<br><table><tr><th colspan=2>Plaatsen</th></tr>"
-                    + "<tr><td>Totaal: " + (d.properties.bezetting_regulier + d.properties.bezetting_specifiek)
+                    + "<tr><td>Totaal: " + (d.properties.bezetting_totaal)
+                    + "</td><td>Bezetting: " + (d.properties.bezetting)
                     + "</td><td>Bezet regulier: " + d.properties.bezetting_regulier
                     + "</td><td>Bezet specifiek: " + d.properties.bezetting_specifiek
                     + "</td><td>Beschikbaar: " + 0 //TODO: give real value
@@ -613,7 +657,9 @@
                 d.properties.values = [
                     {key: 'beschikbaar', value: 10}, //TODO: give real value
                     {key: 'regulier_bezet', value: d.properties.bezetting_regulier},
-                    {key: 'specifiek_bezet', value: d.properties.bezetting_specifiek}
+                    {key: 'specifiek_bezet', value: d.properties.bezetting_specifiek},
+                    {key: 'totaal_bezet', value: d.properties.bezetting_totaal},
+                    {key: 'bezetting', value: d.properties.bezetting}
                  ];
                  
                 //var style = {};
@@ -630,6 +676,7 @@
             self.zorglocaties = data;
             
             zorglocatielayer.data({features:[]});
+            zorglocatiebezettinglayer.data({features:[]});
         });
         
         //LOADING meewoon data
@@ -727,6 +774,7 @@
 				<a class='ctrl' href='#' id='btnlocaties'>Locaties</a><br>
 				<div class='ctrls lev2 hidden locaties'>
 				    <a class='ctrl' href='#' id='btnmijnlocaties'>Prisma</a><br>
+                    <a class='ctrl' href='#' id='btnlocatiebezetting'>Prisma - bezetting</a><br>
 				    <a class='ctrl' href='#' id='btnlocatiesconc'>Concurrentie</a><br>
 				</div>
 				<a class='ctrl' href='#' id='btnmarktaandeel'>Marktaandeel</a><br>
